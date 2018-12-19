@@ -45,7 +45,106 @@ namespace dip {
 /// For dot detection see:
 ///  - `dip::Laplace`
 ///  - `dip::Tophat`
+/// \{
 
+
+/// \brief Hough transform form circles in 2D binary images,
+///
+/// Computes the Hough parameter space for circles in 2D images, with the radius dimension collapsed.
+/// The parameter space `out` has the same sizes as the binary input image `in`. `gv` is a vector image
+/// of the same sizes as `in`, with the gradient vector for each pixel of `in`.
+///
+/// `range` must be empty, or have exactly two elements representing the minimum and maximum radius to
+/// be considered. If empty, the minimum radius is 0, and the maximum is the length of the image diagonal.
+DIP_EXPORT void HoughTransformCircleCenters(
+      Image const& in,
+      Image const& gv,
+      Image& out,
+      UnsignedArray const& range = {}
+);
+inline Image HoughTransformCircleCenters(
+      Image const& in,
+      Image const& gv,
+      UnsignedArray const& range = {}
+) {
+   Image out;
+   HoughTransformCircleCenters( in, gv, out, range );
+   return out;
+}
+
+/// \brief Stores the parametes for one hypersphere (circle, sphere).
+struct RadonCircleParameters{
+   FloatArray origin;
+   dfloat radius;
+};
+using RadonCircleParametersArray = std::vector< RadonCircleParameters >;
+
+/// \brief Detects hypershperes (circles, spheres) using the generalized Radon transform.
+///
+/// This function can obtain highly precise values for the origin and the radius.
+///
+/// `radii` determines the radii for the template, and thus also the size of the parameter space. Note that it is
+/// not possible to find locations of maxima with sub-pixel precision at the boundary of an image, so the first
+/// radius to be probed should be strictly smaller than the smallest circle/sphere to be detected, and the last
+/// radius should be strictly larger.
+///
+/// `sigma` specifies the parameter to the Gaussian regularization used when creating the templates. This parameter
+/// is linked to the step size of `radii`. For example, if `sigma` is set to 2, then the step size can be 2 also,
+/// reducing the size of the parameter space.
+///
+/// The Radon transform parameter space can be computed in three different ways, determined by the value for `mode`:
+/// - "full": `out` is the full parameter space, an image of the size of `in` with an additional dimension for the
+///   *r* axis.
+/// - "projection": `out` is two images of the size of `in` (in the form of two tensor elements), containing the max
+///   and argmax along the *r* axis.
+/// - "subpixel projection": Idem, but the argmax is computed with sub-pixel precision. It computes 3 slices along
+///   *r* at the time, and looks for local maxima along the *r* axis by fitting a parabola to the the 3 samples.
+///
+/// The parameter `options` can contain the following values:
+/// - "normalize": Normalizes the integral over the template for each *r*, so that larger circles don't have a
+///   larger maximum. This prevents a bias towards larger circles.
+/// - "correct": If normalized, the size of the template is corrected to reduce bias in the radius estimate.
+/// - "hollow": Adds a negative ring just inside the positive ring of the template. This forces the algorithm to
+///   look for rings, not disks.
+/// - "filled": Fills the positive ring with negative values. This forces the algorithm to look for rings without
+///   anything in them.
+/// - "no maxima detection": The `RadonCircleParametersArray` output is an empty array.
+/// - "no parameter space": The `out` image is not used. If `mode` is `"full"`, then the parameter space is computed in
+///                         chunks to save memory.
+///
+/// `in` must be scalar and non-complex, and have at least one dimension. `out` will be of type `dip::DT_SFLOAT`.
+///
+/// **Literature**
+/// - C.L. Luengo Hendriks, M. van Ginkel, P.W. Verbeek and L.J. van Vliet,
+///   "The generalized Radon transform: sampling, accuracy and memory considerations",
+///   Pattern Recognition 38(12):2494–2505, 2005.
+/// - C.L. Luengo Hendriks, M. van Ginkel and L.J. van Vliet,
+///   "Underestimation of the radius in the Radon transform for circles and spheres",
+///   Technical Report PH-2003-02, Pattern Recognition Group, Delft University of Technology, The Netherlands, 2003.
+DIP_EXPORT RadonCircleParametersArray RadonTransformCircles(
+      Image const& in,
+      Image& out,
+      Range radii = { 10, 30 },
+      dfloat sigma = 1.0,
+      String const& mode = S::FULL,
+      StringSet const& options = {}
+);
+inline Image RadonTransformCircles(
+      Image const& in,
+      Range radii = { 10, 30 },
+      dfloat sigma = 1.0,
+      String const& mode = S::FULL,
+      StringSet options = {}
+) {
+   Image out;
+   options.insert( S::NO_MAXIMA_DETECTION );
+   options.erase( S::NO_PARAMETER_SPACE );
+   RadonTransformCircles( in, out, radii, sigma, mode, options );
+   return out;
+}
+
+
+/// \}
 
 /// \defgroup detection_corners Corner detectors
 /// \ingroup detection
@@ -368,7 +467,6 @@ inline Image RORPOLineDetector(
    RORPOLineDetector( in, out, length, polarity );
    return out;
 }
-
 
 /// \}
 

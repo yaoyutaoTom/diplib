@@ -111,6 +111,9 @@ void init_analysis( py::module& m ) {
 
    // diplib/detection.h
 
+   m.def( "HoughTransformCircleCenters", py::overload_cast< dip::Image const&, dip::Image const&, dip::UnsignedArray const& >( &dip::HoughTransformCircleCenters ),
+          "in"_a, "gv"_a, "range"_a = dip::UnsignedArray{} );
+
    m.def( "HarrisCornerDetector", py::overload_cast< dip::Image const&, dip::dfloat, dip::FloatArray const&, dip::StringArray const& >( &dip::HarrisCornerDetector ),
           "in"_a, "kappa"_a = 0.04, "sigmas"_a = dip::FloatArray{ 2.0 }, "boundaryCondition"_a = dip::StringArray{} );
    m.def( "ShiTomasiCornerDetector", py::overload_cast< dip::Image const&, dip::FloatArray const&, dip::StringArray const& >( &dip::ShiTomasiCornerDetector ),
